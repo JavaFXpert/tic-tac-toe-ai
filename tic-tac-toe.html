@@ -393,9 +393,9 @@
                 }
 
                 const corsProxies = [
-                    'https://api.allorigins.win/raw?url=',
-                    'https://proxy.cors.sh/',
-                    'https://cors-proxy.fringe.zone/'
+                    'https://api.allorigins.win/get?url=',
+                    'https://corsproxy.org/?',
+                    'https://api.codetabs.com/v1/proxy?quest='
                 ];
 
                 try {
@@ -421,7 +421,7 @@
                     for (const proxy of corsProxies) {
                         try {
                             const proxyUrl = proxy + encodeURIComponent('https://api.anthropic.com/v1/messages');
-                            const response = await this.makeAPIRequest(proxyUrl, apiKey, requestBody, proxy.includes('allorigins'));
+                            const response = await this.makeAPIRequest(proxyUrl, apiKey, requestBody, proxy.includes('allorigins.win/get'));
                             return response;
                         } catch (proxyError) {
                             console.log(`CORS proxy ${proxy} failed:`, proxyError.message);
