@@ -351,6 +351,7 @@
                 this.apiKeyInput = document.getElementById('apiKey');
                 this.useAiToggle = document.getElementById('useAiMessages');
                 this.moveCount = 0;
+                this.corsNoticeShown = false;
                 
                 this.winningConditions = [
                     [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
@@ -431,7 +432,8 @@
 
                     throw new Error('All API endpoints failed');
                 } catch (error) {
-                    console.warn('AI message generation failed:', error);
+                    console.warn('AI message generation failed. Using fallback messages.');
+                    this.showCorsNotice();
                     return this.getFallbackMessage(gameResult);
                 }
             }
@@ -535,6 +537,13 @@
                     return '😔 AI won!';
                 } else {
                     return '🤝 It\'s a draw!';
+                }
+            }
+
+            showCorsNotice() {
+                if (!this.corsNoticeShown) {
+                    console.log('💡 AI messages unavailable due to browser security. Using emoji messages instead.');
+                    this.corsNoticeShown = true;
                 }
             }
 
