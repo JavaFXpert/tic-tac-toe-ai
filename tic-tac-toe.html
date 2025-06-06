@@ -77,96 +77,6 @@
             border: 2px solid #ffcc02;
         }
 
-        .api-controls {
-            margin-bottom: 20px;
-            padding: 20px;
-            background: #f8f9fa;
-            border-radius: 10px;
-            border: 1px solid #dee2e6;
-        }
-
-        .api-field {
-            margin-bottom: 15px;
-            text-align: left;
-        }
-
-        .api-field label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: 600;
-            color: #333;
-            font-size: 0.9rem;
-        }
-
-        .api-field input[type="password"] {
-            width: 100%;
-            padding: 10px;
-            border: 2px solid #dee2e6;
-            border-radius: 6px;
-            font-size: 0.9rem;
-            transition: border-color 0.2s ease;
-        }
-
-        .api-field input[type="password"]:focus {
-            outline: none;
-            border-color: #1976d2;
-        }
-
-        .toggle-field {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 10px;
-        }
-
-        .toggle-field label {
-            margin-bottom: 0;
-            font-size: 0.9rem;
-        }
-
-        .toggle-switch {
-            position: relative;
-            width: 50px;
-            height: 24px;
-        }
-
-        .toggle-switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-
-        .toggle-slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: #ccc;
-            transition: 0.4s;
-            border-radius: 24px;
-        }
-
-        .toggle-slider:before {
-            position: absolute;
-            content: "";
-            height: 18px;
-            width: 18px;
-            left: 3px;
-            bottom: 3px;
-            background-color: white;
-            transition: 0.4s;
-            border-radius: 50%;
-        }
-
-        .toggle-switch input:checked + .toggle-slider {
-            background-color: #1976d2;
-        }
-
-        .toggle-switch input:checked + .toggle-slider:before {
-            transform: translateX(26px);
-        }
 
         .loading-spinner {
             display: inline-block;
@@ -304,19 +214,6 @@
         <h1 class="game-title">Tic Tac Toe</h1>
         <p class="game-subtitle">Human (X) vs AI (O)</p>
         
-        <div class="api-controls">
-            <div class="api-field">
-                <label for="apiKey">Claude API Key:</label>
-                <input type="password" id="apiKey" placeholder="sk-ant-..." />
-            </div>
-            <div class="toggle-field">
-                <label for="useAiMessages">Use AI Messages:</label>
-                <div class="toggle-switch">
-                    <input type="checkbox" id="useAiMessages" checked />
-                    <span class="toggle-slider"></span>
-                </div>
-            </div>
-        </div>
         
         <div class="game-status status-playing" id="gameStatus">
             Your turn! Click a cell to play.
@@ -348,10 +245,7 @@
                 this.gameBoard = document.getElementById('gameBoard');
                 this.gameStatus = document.getElementById('gameStatus');
                 this.resetBtn = document.getElementById('resetBtn');
-                this.apiKeyInput = document.getElementById('apiKey');
-                this.useAiToggle = document.getElementById('useAiMessages');
                 this.moveCount = 0;
-                this.corsNoticeShown = false;
                 
                 this.winningConditions = [
                     [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
@@ -360,173 +254,18 @@
                 ];
                 
                 this.initializeGame();
-                this.loadApiKey();
             }
 
             initializeGame() {
                 this.gameBoard.addEventListener('click', this.handleCellClick.bind(this));
                 this.resetBtn.addEventListener('click', this.resetGame.bind(this));
-                this.apiKeyInput.addEventListener('change', this.saveApiKey.bind(this));
                 this.updateGameStatus('Your turn! Click a cell to play.');
             }
 
-            loadApiKey() {
-                const savedKey = localStorage.getItem('claude-api-key');
-                if (savedKey) {
-                    this.apiKeyInput.value = savedKey;
-                }
-            }
 
-            saveApiKey() {
-                const apiKey = this.apiKeyInput.value.trim();
-                if (apiKey) {
-                    localStorage.setItem('claude-api-key', apiKey);
-                } else {
-                    localStorage.removeItem('claude-api-key');
-                }
-            }
 
-            async generateAIMessage(gameResult) {
-                const apiKey = this.apiKeyInput.value.trim();
-                
-                if (!apiKey || !this.useAiToggle.checked) {
-                    return this.getFallbackMessage(gameResult);
-                }
 
-                const corsProxies = [
-                    'https://api.allorigins.win/get?url=',
-                    'https://corsproxy.org/?',
-                    'https://api.codetabs.com/v1/proxy?quest='
-                ];
 
-                try {
-                    const prompt = this.getPrompt(gameResult);
-                    const requestBody = {
-                        model: 'claude-sonnet-4-20250514',
-                        max_tokens: 100,
-                        messages: [{
-                            role: 'user',
-                            content: prompt
-                        }]
-                    };
-
-                    // Try direct API call first (works in production environments)
-                    try {
-                        const response = await this.makeAPIRequest('https://api.anthropic.com/v1/messages', apiKey, requestBody);
-                        return response;
-                    } catch (directError) {
-                        console.log('Direct API call failed, trying CORS proxies...');
-                    }
-
-                    // Try CORS proxies
-                    for (const proxy of corsProxies) {
-                        try {
-                            const proxyUrl = proxy + encodeURIComponent('https://api.anthropic.com/v1/messages');
-                            const response = await this.makeAPIRequest(proxyUrl, apiKey, requestBody, proxy.includes('allorigins.win/get'));
-                            return response;
-                        } catch (proxyError) {
-                            console.log(`CORS proxy ${proxy} failed:`, proxyError.message);
-                            continue;
-                        }
-                    }
-
-                    throw new Error('All API endpoints failed');
-                } catch (error) {
-                    console.warn('AI message generation failed. Using fallback messages.');
-                    this.showCorsNotice();
-                    return this.getFallbackMessage(gameResult);
-                }
-            }
-
-            async makeAPIRequest(url, apiKey, requestBody, isAllOrigins = false) {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-                try {
-                    let fetchOptions = {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'x-api-key': apiKey,
-                            'anthropic-version': '2023-06-01'
-                        },
-                        body: JSON.stringify(requestBody),
-                        signal: controller.signal
-                    };
-
-                    // Special handling for allorigins proxy
-                    if (isAllOrigins) {
-                        fetchOptions = {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({
-                                url: 'https://api.anthropic.com/v1/messages',
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'x-api-key': apiKey,
-                                    'anthropic-version': '2023-06-01'
-                                },
-                                body: JSON.stringify(requestBody)
-                            }),
-                            signal: controller.signal
-                        };
-                    }
-
-                    const response = await fetch(url, fetchOptions);
-
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                    }
-
-                    let data = await response.json();
-                    
-                    // Handle allorigins response format
-                    if (isAllOrigins && data.contents) {
-                        data = JSON.parse(data.contents);
-                    }
-
-                    if (!data.content || !data.content[0] || !data.content[0].text) {
-                        throw new Error('Invalid API response format');
-                    }
-
-                    return data.content[0].text.trim();
-                } finally {
-                    clearTimeout(timeoutId);
-                }
-            }
-
-            getPrompt(gameResult) {
-                const { winner, winningCells } = gameResult;
-                const winPattern = this.getWinPattern(winningCells);
-                
-                if (winner === 'X') {
-                    return `Generate a creative congratulatory message for beating an AI at tic-tac-toe in ${this.moveCount} moves via ${winPattern}. Keep it under 40 words and make it encouraging.`;
-                } else if (winner === 'O') {
-                    return `Generate a humorous, good-natured message about losing to an unbeatable tic-tac-toe AI. Make it motivating for a rematch, under 40 words.`;
-                } else {
-                    return `Generate a witty message about achieving a draw in tic-tac-toe against perfect AI. Keep it philosophical or clever, under 40 words.`;
-                }
-            }
-
-            getWinPattern(winningCells) {
-                if (!winningCells) return 'unknown';
-                
-                const patterns = {
-                    '0,1,2': 'top row',
-                    '3,4,5': 'middle row', 
-                    '6,7,8': 'bottom row',
-                    '0,3,6': 'left column',
-                    '1,4,7': 'middle column',
-                    '2,5,8': 'right column',
-                    '0,4,8': 'main diagonal',
-                    '2,4,6': 'anti-diagonal'
-                };
-                
-                return patterns[winningCells.join(',')] || 'winning pattern';
-            }
 
             getFallbackMessage(gameResult) {
                 const { winner } = gameResult;
@@ -540,12 +279,6 @@
                 }
             }
 
-            showCorsNotice() {
-                if (!this.corsNoticeShown) {
-                    console.log('💡 AI messages unavailable due to browser security. Using emoji messages instead.');
-                    this.corsNoticeShown = true;
-                }
-            }
 
             handleCellClick(event) {
                 const cell = event.target;
@@ -565,7 +298,7 @@
                 }
             }
 
-            async makeMove(index, player) {
+            makeMove(index, player) {
                 this.board[index] = player;
                 this.updateCell(index, player);
                 
@@ -583,30 +316,14 @@
                         this.highlightWinningCells(result.winningCells);
                     }
                     
-                    // Show loading state while generating AI message
-                    this.updateGameStatus('<div class="loading-spinner"></div>Generating message...', 'status-playing');
+                    const message = this.getFallbackMessage(result);
                     
-                    try {
-                        const aiMessage = await this.generateAIMessage(result);
-                        
-                        if (result.winner === 'X') {
-                            this.updateGameStatus(aiMessage, 'status-won');
-                        } else if (result.winner === 'O') {
-                            this.updateGameStatus(aiMessage, 'status-lost');
-                        } else {
-                            this.updateGameStatus(aiMessage, 'status-draw');
-                        }
-                    } catch (error) {
-                        // Fallback to original messages on any error
-                        const fallbackMessage = this.getFallbackMessage(result);
-                        
-                        if (result.winner === 'X') {
-                            this.updateGameStatus(fallbackMessage, 'status-won');
-                        } else if (result.winner === 'O') {
-                            this.updateGameStatus(fallbackMessage, 'status-lost');
-                        } else {
-                            this.updateGameStatus(fallbackMessage, 'status-draw');
-                        }
+                    if (result.winner === 'X') {
+                        this.updateGameStatus(message, 'status-won');
+                    } else if (result.winner === 'O') {
+                        this.updateGameStatus(message, 'status-lost');
+                    } else {
+                        this.updateGameStatus(message, 'status-draw');
                     }
                 } else {
                     this.currentPlayer = this.currentPlayer === 'X' ? 'O' : 'X';
